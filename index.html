@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Iran 3D News Monitor</title>
+    <script src="https://unpkg.com/globe.gl/dist/globe.gl.min.js"></script>
+    
+    <style>
+        body { margin: 0; background: #010409; font-family: sans-serif; overflow: hidden; color: white; }
+        #ui { position: absolute; top: 20px; left: 20px; pointer-events: none; z-index: 100; }
+        #ui h1 { margin: 0; font-size: 20px; color: #ff4d4d; text-shadow: 0 0 10px rgba(255,0,0,0.3); }
+        #status { font-size: 12px; color: #888; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <h1>IRAN LIVE MONITOR</h1>
+        <div id="status">Connecting to Feed...</div>
+    </div>
+
+    <div id="globeViz"></div>
+
+    <script>
+        // Check if the library loaded correctly
+        window.onload = function() {
+            if (typeof Globe === 'undefined') {
+                document.getElementById('status').innerHTML = "Error: Library blocked. Try opening in a different browser.";
+                return;
+            }
+
+            const world = Globe()
+                (document.getElementById('globeViz'))
+                .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
+                .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
+                .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
+                .pointColor(() => '#ff4d4d')
+                .pointRadius(0.8)
+                .pointAltitude(0.05)
+                .pointLabel(d => `<div style="background:rgba(0,0,0,0.9);padding:10px;border:1px solid #444;border-radius:5px;">${d.headline}</div>`)
+                .onPointClick(d => window.open(d.url, '_blank'));
+
+            // GDELT Data Feed
+            const GDELT_API = "https://api.gdeltproject.org/api/v2/context/context?query=Iran%20sourcelang:eng&mode=artlist&format=geojson";
+
+            fetch(GDELT_API)
+                .then(res => res.json())
+                .then(data => {
+                    const points = data.features.map(feat => ({
+                        lat: feat.geometry.coordinates[1],
+                        lng: feat.geometry.coordinates[0],
+                        headline: feat.properties.title,
+                        url: feat.properties.url
+                    }));
+                    
+                    world.pointsData(points);
+                    document.getElementById('status').innerHTML = `Live: ${points.length} events found.`;
+                    world.pointOfView({ lat: 32, lng: 53, altitude: 2 }, 2000);
+                })
+                .catch(err => {
+                    document.getElementById('status').innerHTML = "Status: Feed Restricted by Browser.";
+                });
+        };
+    </script>
+</body>
+</html>
