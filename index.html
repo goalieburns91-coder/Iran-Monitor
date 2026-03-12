@@ -5,65 +5,64 @@
     <script src="https://unpkg.com/globe.gl"></script>
     <style>
         body { margin: 0; background: #010409; font-family: sans-serif; overflow: hidden; color: white; }
-        #ui { position: absolute; top: 20px; left: 20px; pointer-events: none; z-index: 100; }
-        #ui h1 { margin: 0; font-size: 20px; color: #ff4d4d; letter-spacing: 1px; }
-        #status { font-size: 12px; color: #888; margin-top: 5px; background: rgba(0,0,0,0.5); padding: 4px; border-radius: 3px; }
+        #ui { position: absolute; top: 20px; left: 20px; z-index: 100; pointer-events: none; }
+        #ui h1 { margin: 0; font-size: 20px; color: #ff4d4d; text-shadow: 0 0 10px rgba(255,0,0,0.5); }
+        #status { font-size: 12px; color: #888; margin-top: 5px; background: rgba(0,0,0,0.6); padding: 5px; border-radius: 4px; display: inline-block; }
     </style>
 </head>
 <body>
     <div id="ui">
         <h1>IRAN LIVE MONITOR</h1>
-        <div id="status">Waking up satellite feed...</div>
+        <div id="status">Establishing secure data link...</div>
     </div>
     <div id="globeViz"></div>
 
     <script>
-        window.onload = function() {
-            const statusBox = document.getElementById('status');
-            
-            const world = Globe()
-                (document.getElementById('globeViz'))
-                .globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg')
-                .pointColor(() => '#ff4d4d')
-                .pointRadius(0.8)
-                .pointAltitude(0.05)
-                .pointLabel(d => `<div style="background:rgba(0,0,0,0.85);padding:10px;border:1px solid #444;border-radius:5px;max-width:200px;">${d.headline}</div>`)
-                .onPointClick(d => window.open(d.url, '_blank'));
+        // 1. Initialize the Globe immediately
+        const world = Globe()
+            (document.getElementById('globeViz'))
+            .globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg')
+            .pointColor(() => '#ff4d4d')
+            .pointRadius(0.8)
+            .pointAltitude(0.05)
+            .pointLabel(d => `<div style="background:black;padding:10px;border:1px solid #444;border-radius:5px;max-width:200px;">${d.headline}</div>`)
+            .onPointClick(d => window.open(d.url, '_blank'));
 
-            // GDELT Feed for Iran
-            const rawUrl = "https://api.gdeltproject.org/api/v2/context/context?query=Iran%20sourcelang:eng&mode=artlist&format=geojson";
-            
-            // Using AllOrigins Proxy (often better for GitHub Pages)
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(rawUrl)}`;
-
-            fetch(proxyUrl)
-                .then(res => {
-                    if (!res.ok) throw new Error('Network error');
-                    return res.json();
-                })
-                .then(data => {
-                    // AllOrigins wraps the data in a "contents" string, so we parse it
-                    const geoData = JSON.parse(data.contents);
-                    
-                    const points = geoData.features.map(feat => ({
-                        lat: feat.geometry.coordinates[1],
-                        lng: feat.geometry.coordinates[0],
-                        headline: feat.properties.title,
-                        url: feat.properties.url
-                    }));
-                    
-                    world.pointsData(points);
-                    statusBox.innerHTML = `LIVE: Tracking ${points.length} events in region.`;
-                    
-                    // Center and zoom on Iran
-                    world.pointOfView({ lat: 32.42, lng: 53.68, altitude: 2 }, 2000);
-                })
-                .catch(err => {
-                    console.error(err);
-                    statusBox.innerHTML = "FEED ERROR: Security block detected. Please refresh or check VPN.";
-                    statusBox.style.color = "#ffa500";
-                });
+        // 2. The JSONP Callback Function
+        // This function runs automatically when the data arrives
+        window.handleData = function(response) {
+            try {
+                const geoData = JSON.parse(response.contents);
+                const points = geoData.features.map(feat => ({
+                    lat: feat.geometry.coordinates[1],
+                    lng: feat.geometry.coordinates[0],
+                    headline: feat.properties.title,
+                    url: feat.properties.url
+                }));
+                
+                world.pointsData(points);
+                document.getElementById('status').innerHTML = `LIVE: ${points.length} events tracked.`;
+                world.pointOfView({ lat: 32.42, lng: 53.68, altitude: 2 }, 2000);
+            } catch (e) {
+                document.getElementById('status').innerHTML = "DATA ERROR: Invalid feed format.";
+            }
         };
+
+        // 3. Inject the data script (Bypasses Fetch/CORS restrictions)
+        const rawUrl = "https://api.gdeltproject.org/api/v2/context/context?query=Iran%20sourcelang:eng&mode=artlist&format=geojson";
+        const jsonpUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(rawUrl)}&callback=handleData`;
+
+        const script = document.createElement('script');
+        script.src = jsonpUrl;
+        document.body.appendChild(script);
+
+        // Fallback timer
+        setTimeout(() => {
+            if (document.getElementById('status').innerHTML.includes("Establishing")) {
+                document.getElementById('status').innerHTML = "TIMEOUT: Network is blocking the feed. Try a different WiFi or turn off VPN.";
+                document.getElementById('status').style.color = "orange";
+            }
+        }, 8000);
     </script>
 </body>
 </html>
