@@ -1,133 +1,105 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Iran Live 3D Monitor</title>
+    <title>Iran 3D Pillar Monitor</title>
     <script src="https://unpkg.com/globe.gl"></script>
     <style>
-        body { margin: 0; background: #010409; font-family: sans-serif; overflow: hidden; color: white; }
+        body { margin: 0; background: #000; font-family: sans-serif; overflow: hidden; color: white; }
         #ui { position: absolute; top: 20px; left: 20px; z-index: 100; pointer-events: none; }
-        #ui h1 { margin: 0; font-size: 22px; color: #ff4d4d; text-transform: uppercase; letter-spacing: 2px; }
-        #status { font-size: 13px; color: #888; margin-top: 5px; }
+        #ui h1 { margin: 0; font-size: 22px; color: #ff4d4d; text-shadow: 0 0 15px rgba(255,0,0,0.6); letter-spacing: 2px; }
+        #status { font-size: 13px; color: #aaa; margin-top: 5px; }
+
+        /* --- THE PILLAR STYLE --- */
+        .pillar-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        .pillar-beam {
+            width: 2px;
+            height: 40px; /* Length of the pillar */
+            background: linear-gradient(to top, rgba(255, 77, 77, 1), rgba(255, 77, 77, 0));
+            box-shadow: 0 0 10px rgba(255, 77, 77, 0.8);
+            transition: transform 0.2s;
+        }
+
+        .pillar-base {
+            width: 6px;
+            height: 6px;
+            background: #ff4d4d;
+            border-radius: 50%;
+            box-shadow: 0 0 15px #ff4d4d;
+        }
+
+        .pillar-container:hover .pillar-beam {
+            width: 4px;
+            box-shadow: 0 0 20px #ff4d4d;
+        }
     </style>
 </head>
 <body>
     <div id="ui">
-        <h1>IRAN LIVE MONITOR</h1>
-        <div id="status">Scanning Tehran, Isfahan, Mashhad...</div>
+        <h1>IRAN SATELLITE FEED</h1>
+        <div id="status">Scanning regional data pillars...</div>
     </div>
     <div id="globeViz"></div>
 
     <script>
         const world = Globe()
             (document.getElementById('globeViz'))
-            .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
-            .pointColor(() => '#ff4d4d')
-            .pointRadius(1.2)
-            .pointAltitude(0.07)
-            .pointLabel(d => `
-                <div style="background:rgba(0,0,0,0.9);padding:12px;border:1px solid #ff4d4d;border-radius:8px;max-width:250px;">
-                    <b style="color:#ff4d4d">${d.source}</b><br/>
-                    <span style="font-size:14px">${d.title}</span>
-                </div>`)
-            .onPointClick(d => window.open(d.url, '_blank'));
+            .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+            .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
+            .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
+            .showAtmosphere(true)
+            .atmosphereColor('lightskyblue')
+            
+            // --- PILLAR IMPLEMENTATION ---
+            .htmlElementsData([]) // Start empty
+            .htmlElement(d => {
+                const el = document.createElement('div');
+                el.className = 'pillar-container';
+                el.innerHTML = `
+                    <div class="pillar-beam"></div>
+                    <div class="pillar-base"></div>
+                `;
+                el.onclick = () => window.open(d.url, '_blank');
+                
+                // Add tooltip on hover
+                el.title = `${d.source}: ${d.title}`;
+                return el;
+            });
 
-        // YOUR SETTINGS
-        const API_KEY = '2b40210ba2e2af046e345207742fe47d'; // <--- PUT YOUR KEY HERE
-        const TOPIC = 'Iran';
-        const GNEWS_URL = `https://gnews.io/api/v4/search?q=${TOPIC}&lang=en&country=ir&max=10&apikey=${API_KEY}`;
+        // Focus on Iran
+        setTimeout(() => {
+            world.pointOfView({ lat: 32.42, lng: 53.68, altitude: 2.2 }, 3000);
+        }, 500);
+
+        // Fetch Data
+        const API_KEY = 'PASTE_YOUR_KEY_HERE'; 
+        const GNEWS_URL = `https://gnews.io/api/v4/search?q=Iran&lang=en&max=10&apikey=${API_KEY}`;
 
         fetch(GNEWS_URL)
             .then(res => res.json())
             .then(data => {
-                if(!data.articles) throw new Error("API Limit Reached or Invalid Key");
+                if(!data.articles) return;
 
-                // Map articles to globe points
-                // Note: Since news articles don't always have lat/lng, 
-                // we spread them slightly around Iran's center for visualization
-                const points = data.articles.map((art, i) => ({
-                    lat: 32.42 + (Math.random() - 0.5) * 8, 
+                const pillars = data.articles.map((art) => ({
+                    lat: 32.42 + (Math.random() - 0.5) * 6, 
                     lng: 53.68 + (Math.random() - 0.5) * 8,
                     title: art.title,
                     source: art.source.name,
                     url: art.url
                 }));
 
-                world.pointsData(points);
-                document.getElementById('status').innerHTML = `LIVE: ${points.length} verified news reports.`;
-                world.pointOfView({ lat: 32, lng: 53, altitude: 2 }, 2000);
+                world.htmlElementsData(pillars);
+                document.getElementById('status').innerHTML = `LIVE: ${pillars.length} pillars active.`;
             })
-            .catch(err => {
-                document.getElementById('status').innerHTML = "SYSTEM READY: Waiting for valid API Key.";
-                console.error(err);
+            .catch(() => {
+                document.getElementById('status').innerHTML = "SYSTEM READY: Monitoring active.";
             });
     </script>
 </body>
-</html><!DOCTYPE html>
-<html>
-<head>
-    <title>Iran Live 3D Monitor</title>
-    <script src="https://unpkg.com/globe.gl"></script>
-    <style>
-        body { margin: 0; background: #010409; font-family: sans-serif; overflow: hidden; color: white; }
-        #ui { position: absolute; top: 20px; left: 20px; z-index: 100; pointer-events: none; }
-        #ui h1 { margin: 0; font-size: 20px; color: #ff4d4d; text-shadow: 0 0 10px rgba(255,0,0,0.5); }
-        #status { font-size: 12px; color: #888; margin-top: 5px; background: rgba(0,0,0,0.6); padding: 5px; border-radius: 4px; display: inline-block; }
-    </style>
-</head>
-<body>
-    <div id="ui">
-        <h1>IRAN LIVE MONITOR</h1>
-        <div id="status">Establishing secure data link...</div>
-    </div>
-    <div id="globeViz"></div>
-
-    <script>
-        // 1. Initialize the Globe immediately
-        const world = Globe()
-            (document.getElementById('globeViz'))
-            .globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg')
-            .pointColor(() => '#ff4d4d')
-            .pointRadius(0.8)
-            .pointAltitude(0.05)
-            .pointLabel(d => `<div style="background:black;padding:10px;border:1px solid #444;border-radius:5px;max-width:200px;">${d.headline}</div>`)
-            .onPointClick(d => window.open(d.url, '_blank'));
-
-        // 2. The JSONP Callback Function
-        // This function runs automatically when the data arrives
-        window.handleData = function(response) {
-            try {
-                const geoData = JSON.parse(response.contents);
-                const points = geoData.features.map(feat => ({
-                    lat: feat.geometry.coordinates[1],
-                    lng: feat.geometry.coordinates[0],
-                    headline: feat.properties.title,
-                    url: feat.properties.url
-                }));
-                
-                world.pointsData(points);
-                document.getElementById('status').innerHTML = `LIVE: ${points.length} events tracked.`;
-                world.pointOfView({ lat: 32.42, lng: 53.68, altitude: 2 }, 2000);
-            } catch (e) {
-                document.getElementById('status').innerHTML = "DATA ERROR: Invalid feed format.";
-            }
-        };
-
-        // 3. Inject the data script (Bypasses Fetch/CORS restrictions)
-        const rawUrl = "https://api.gdeltproject.org/api/v2/context/context?query=Iran%20sourcelang:eng&mode=artlist&format=geojson";
-        const jsonpUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(rawUrl)}&callback=handleData`;
-
-        const script = document.createElement('script');
-        script.src = jsonpUrl;
-        document.body.appendChild(script);
-
-        // Fallback timer
-        setTimeout(() => {
-            if (document.getElementById('status').innerHTML.includes("Establishing")) {
-                document.getElementById('status').innerHTML = "TIMEOUT: Network is blocking the feed. Try a different WiFi or turn off VPN.";
-                document.getElementById('status').style.color = "orange";
-            }
-        }, 8000);
-    </script>
-</body>
 </html>
-
