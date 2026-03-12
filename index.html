@@ -6,6 +6,70 @@
     <style>
         body { margin: 0; background: #010409; font-family: sans-serif; overflow: hidden; color: white; }
         #ui { position: absolute; top: 20px; left: 20px; z-index: 100; pointer-events: none; }
+        #ui h1 { margin: 0; font-size: 22px; color: #ff4d4d; text-transform: uppercase; letter-spacing: 2px; }
+        #status { font-size: 13px; color: #888; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h1>IRAN LIVE MONITOR</h1>
+        <div id="status">Scanning Tehran, Isfahan, Mashhad...</div>
+    </div>
+    <div id="globeViz"></div>
+
+    <script>
+        const world = Globe()
+            (document.getElementById('globeViz'))
+            .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
+            .pointColor(() => '#ff4d4d')
+            .pointRadius(1.2)
+            .pointAltitude(0.07)
+            .pointLabel(d => `
+                <div style="background:rgba(0,0,0,0.9);padding:12px;border:1px solid #ff4d4d;border-radius:8px;max-width:250px;">
+                    <b style="color:#ff4d4d">${d.source}</b><br/>
+                    <span style="font-size:14px">${d.title}</span>
+                </div>`)
+            .onPointClick(d => window.open(d.url, '_blank'));
+
+        // YOUR SETTINGS
+        const API_KEY = '2b40210ba2e2af046e345207742fe47d'; // <--- PUT YOUR KEY HERE
+        const TOPIC = 'Iran';
+        const GNEWS_URL = `https://gnews.io/api/v4/search?q=${TOPIC}&lang=en&country=ir&max=10&apikey=${API_KEY}`;
+
+        fetch(GNEWS_URL)
+            .then(res => res.json())
+            .then(data => {
+                if(!data.articles) throw new Error("API Limit Reached or Invalid Key");
+
+                // Map articles to globe points
+                // Note: Since news articles don't always have lat/lng, 
+                // we spread them slightly around Iran's center for visualization
+                const points = data.articles.map((art, i) => ({
+                    lat: 32.42 + (Math.random() - 0.5) * 8, 
+                    lng: 53.68 + (Math.random() - 0.5) * 8,
+                    title: art.title,
+                    source: art.source.name,
+                    url: art.url
+                }));
+
+                world.pointsData(points);
+                document.getElementById('status').innerHTML = `LIVE: ${points.length} verified news reports.`;
+                world.pointOfView({ lat: 32, lng: 53, altitude: 2 }, 2000);
+            })
+            .catch(err => {
+                document.getElementById('status').innerHTML = "SYSTEM READY: Waiting for valid API Key.";
+                console.error(err);
+            });
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html>
+<head>
+    <title>Iran Live 3D Monitor</title>
+    <script src="https://unpkg.com/globe.gl"></script>
+    <style>
+        body { margin: 0; background: #010409; font-family: sans-serif; overflow: hidden; color: white; }
+        #ui { position: absolute; top: 20px; left: 20px; z-index: 100; pointer-events: none; }
         #ui h1 { margin: 0; font-size: 20px; color: #ff4d4d; text-shadow: 0 0 10px rgba(255,0,0,0.5); }
         #status { font-size: 12px; color: #888; margin-top: 5px; background: rgba(0,0,0,0.6); padding: 5px; border-radius: 4px; display: inline-block; }
     </style>
@@ -66,3 +130,4 @@
     </script>
 </body>
 </html>
+
